@@ -23,18 +23,32 @@ pricing = boto3.client("pricing", region_name=REGION_NAME)
 CSV_FILE = Path("gpu_prices.csv")
 
 
+import gzip, json, requests   # add gzip and json to your imports
+
 def fetch_price_file(day: dt.date) -> dict:
-    """Download the price-list JSON that was effective on <day>."""
+    """Download the JSON price list that was effective on <day>."""
     resp = pricing.list_price_lists(
         ServiceCode="AmazonEC2",
-        EffectiveDate=day.isoformat(),
-        CurrencyCode="USD",
         RegionCode=REGION_NAME,
+        CurrencyCode="USD",
+        EffectiveDate=day.isoformat(),
         MaxResults=1,
     )
     arn = resp["PriceLists"][0]["PriceListArn"]
-    url = pricing.get_price_list_file_url(PriceListArn=arn)["Url"]
-    return requests.get(url, timeout=30).json()     # ~ a few MB
+
+    # ⬇️ FileFormat is now required
+    url = pricing.get_price_list_file_url(
+        PriceListArn=arn,
+        FileFormat="json"          # "json" | "csv"  (json comes gzipped)
+    )["Url"]
+
+    blob = requests.get(url, timeout=60).content
+    # Most JSON files are gzipped (.json.gz); decompress if needed
+    if blob[:2] == b"\x1f\x8b":        # magic bytes for gzip
+        blob = gzip.decompress(blob)
+
+    return json.loads(blob)
+
 
 
 def extract_price(j: dict, instance: str) -> float | None:
