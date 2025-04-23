@@ -15,7 +15,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install deps
-        run: pip install boto3
+  run: pip install boto3 requests
 
       - name: Run tracker
         env:
