@@ -1,28 +1,42 @@
 name: Update GPU Prices
+
+# This lets the workflow push commits back to the repo
+permissions:
+  contents: write
+
 on:
+  # run every day at 07:00 UTC (03:00 ET)
   schedule:
-    - cron:  '0 7 * * *'   # every day 07:00 UTC (3 am ET)
-  workflow_dispatch:       # allow manual runs
+    - cron: '0 7 * * *'
+  # manual trigger button in the Actions tab
+  workflow_dispatch:
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
+
     steps:
+      # 1. Check out the repo so we can read/write files
       - uses: actions/checkout@v4
 
+      # 2. Set up Python 3.11
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install deps
-  run: pip install boto3 requests
+      # 3. Install the libraries the tracker script needs
+      - name: Install dependencies
+        run: pip install boto3 requests
 
+      # 4. Run the price-tracker script
       - name: Run tracker
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: python tracker.py
 
+      # 5. Commit the updated CSV (only if something changed)
       - name: Commit results (if changed)
         run: |
           git config --global user.name  "github-actions[bot]"
